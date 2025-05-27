@@ -1,0 +1,10 @@
+{
+  "Web Attack - Brute Force": 0,
+  "DDoS": 1,
+  "Web Attack - XSS": 2,
+  "BENIGN": 3,
+  "PortScan": 4,
+  "Web Attack - Sql Injection": 5,
+  "Bot": 6,
+  "Infiltration": 7
+}
