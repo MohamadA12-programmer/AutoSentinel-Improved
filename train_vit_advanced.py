@@ -7,12 +7,27 @@ import json
 import os
 import random
 import math
+import time
+from datetime import datetime, timedelta
 from pathlib import Path
 import logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def format_time(seconds):
+    """Format time in seconds to HH:MM:SS"""
+    return str(timedelta(seconds=int(seconds)))
+
+def print_progress_bar(iteration, total, prefix='', suffix='', decimals=1, length=50, fill='█'):
+    """Print a progress bar to show training progress"""
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filled_length = int(length * iteration // total)
+    bar = fill * filled_length + '-' * (length - filled_length)
+    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end='')
+    if iteration == total:
+        print()
 
 class AdvancedViT:
     """Advanced Vision Transformer with proper attention, normalization, and deep learning techniques"""
@@ -289,11 +304,30 @@ class AdvancedViT:
         total = len(train_data)
         total_loss = 0.0
         
+        # Progress tracking
+        start_time = time.time()
+        last_update_time = start_time
+        update_interval = 0.1  # Update progress bar every 0.1 seconds
+        
         # Shuffle training data
         shuffled_data = train_data.copy()
         random.shuffle(shuffled_data)
         
         for batch_idx, (image, label) in enumerate(shuffled_data):
+            # Progress bar update
+            current_time = time.time()
+            if current_time - last_update_time >= update_interval:
+                elapsed_time = current_time - start_time
+                progress = (batch_idx + 1) / total
+                if progress > 0:
+                    eta = elapsed_time / progress - elapsed_time
+                    eta_str = format_time(eta)
+                    print_progress_bar(batch_idx + 1, total, 
+                                     prefix=f'Training: ',
+                                     suffix=f'ETA: {eta_str}',
+                                     length=30)
+                last_update_time = current_time
+
             # Forward pass
             logits, cls_features = self.forward(image, training=True)
             predicted = logits.index(max(logits))
@@ -509,7 +543,14 @@ class AdvancedViTTrainer:
         patience_counter = 0
         learning_rates = []
         
+        # Training time tracking
+        total_start_time = time.time()
+        
         for epoch in range(epochs):
+            epoch_start_time = time.time()
+            print(f"\nEpoch {epoch+1}/{epochs}")
+            print("=" * 50)
+            
             # Advanced learning rate scheduling
             if epoch < 10:
                 current_lr = learning_rate
@@ -526,10 +567,23 @@ class AdvancedViTTrainer:
             train_accuracy = model.train_epoch(train_data, current_lr)
             
             # Validate
+            print("\nValidating...")
             val_accuracy = model.evaluate(val_data) if val_data else 0.0
             
-            logger.info(f"Epoch {epoch+1}/{epochs}: "
-                       f"Train Acc: {train_accuracy:.3f}, Val Acc: {val_accuracy:.3f}, LR: {current_lr:.5f}")
+            # Calculate epoch time and total time
+            epoch_time = time.time() - epoch_start_time
+            total_time = time.time() - total_start_time
+            avg_epoch_time = total_time / (epoch + 1)
+            remaining_epochs = epochs - (epoch + 1)
+            eta = avg_epoch_time * remaining_epochs
+            
+            logger.info(
+                f"Epoch {epoch+1}/{epochs}: "
+                f"Train Acc: {train_accuracy:.3f}, Val Acc: {val_accuracy:.3f}, "
+                f"LR: {current_lr:.5f}\n"
+                f"Time: {format_time(epoch_time)}, "
+                f"ETA: {format_time(eta)}"
+            )
             
             # Save best model
             if val_accuracy > best_val_accuracy:
@@ -545,11 +599,17 @@ class AdvancedViTTrainer:
                 logger.info(f"Early stopping at epoch {epoch+1}")
                 break
         
+        total_training_time = time.time() - total_start_time
+        
         model.is_trained = True
         model.training_accuracy = train_accuracy
         model.validation_accuracy = best_val_accuracy
         
-        logger.info(f"Advanced training complete! Best validation accuracy: {best_val_accuracy:.3f}")
+        logger.info(
+            f"Advanced training complete!\n"
+            f"Best validation accuracy: {best_val_accuracy:.3f}\n"
+            f"Total training time: {format_time(total_training_time)}"
+        )
         return model
     
     def save_model(self, model, epoch, train_acc, val_acc):
